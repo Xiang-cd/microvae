@@ -147,12 +147,17 @@ if __name__ == '__main__':
     # 从 Bernoulli VAE 采样
     print("\nSampling from Bernoulli VAE")
     sample_vae(bernoulli_vae, device, 'bernoulli.png', num_samples=16)
-    import IPython; IPython.embed()
-
     # 训练 Gaussian VAE
     print("\nTraining Gaussian VAE")
     train_vae(gaussian_vae, train_loader, optimizer_g, device, epochs=10)
 
     # 从 Gaussian VAE 采样
     print("\nSampling from Gaussian VAE")
-    sample_vae(gaussian_vae, device, 'gaussian.png', num_samples=16)
+    gaussian_vae.sigma = 0.1
+    sample_vae(gaussian_vae, device, 'gaussian_sigma0.1.png', num_samples=16)
+    
+    gaussian_vae.sigma = 0.0
+    sample_vae(gaussian_vae, device, 'gaussian_sigma0.0.png', num_samples=16)
+    
+    gaussian_vae.sigma = 0.3
+    sample_vae(gaussian_vae, device, 'gaussian_sigma0.3.png', num_samples=16)
