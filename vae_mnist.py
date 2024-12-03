@@ -4,8 +4,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
 import torchvision
+from torchvision.utils import save_image
 
 # 定义 VAE 基类
 class VAE(nn.Module):
@@ -113,7 +113,7 @@ def train_vae(model, train_loader, optimizer, device, epochs=10):
         print(f'Epoch {epoch}, Loss: {average_loss:.4f}')
 
 # 采样函数
-def sample_vae(model, device, num_samples=16):
+def sample_vae(model, device, save_path, num_samples=16):
     model.eval()
     with torch.no_grad():
         z = torch.randn(num_samples, model.latent_dim).to(device)
@@ -123,35 +123,36 @@ def sample_vae(model, device, num_samples=16):
             x_recon = torch.bernoulli(x_recon_probs)  # 从伯努利分布中采样
         else:  # GaussianVAE
             x_recon = model.decode(z)
+            x_recon = torch.normal(x_recon, model.sigma) # 从正态分布中采样
         x_recon = x_recon.view(-1, 1, 28, 28).cpu()
         grid = torchvision.utils.make_grid(x_recon, nrow=4)
-        plt.imshow(grid.permute(1, 2, 0).squeeze(), cmap='gray')
-        plt.axis('off')
-        plt.show()
+        save_image(grid, save_path, nrow=4)
 
-# 训练和采样
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if __name__ == '__main__':
+    # 训练和采样
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# 初始化模型
-bernoulli_vae = BernoulliVAE(latent_dim=40).to(device)
-gaussian_vae = GaussianVAE(latent_dim=40, sigma=1.0).to(device)
+    # 初始化模型
+    bernoulli_vae = BernoulliVAE(latent_dim=40).to(device)
+    gaussian_vae = GaussianVAE(latent_dim=40, sigma=1.0).to(device)
 
-# 优化器
-optimizer_b = optim.Adam(bernoulli_vae.parameters(), lr=1e-3)
-optimizer_g = optim.Adam(gaussian_vae.parameters(), lr=1e-3)
+    # 优化器
+    optimizer_b = optim.Adam(bernoulli_vae.parameters(), lr=1e-3)
+    optimizer_g = optim.Adam(gaussian_vae.parameters(), lr=1e-3)
 
-# 训练 Bernoulli VAE
-print("Training Bernoulli VAE")
-train_vae(bernoulli_vae, train_loader, optimizer_b, device, epochs=10)
+    # 训练 Bernoulli VAE
+    print("Training Bernoulli VAE")
+    train_vae(bernoulli_vae, train_loader, optimizer_b, device, epochs=10)
 
-# 训练 Gaussian VAE
-print("\nTraining Gaussian VAE")
-train_vae(gaussian_vae, train_loader, optimizer_g, device, epochs=10)
+    # 从 Bernoulli VAE 采样
+    print("\nSampling from Bernoulli VAE")
+    sample_vae(bernoulli_vae, device, 'bernoulli.png', num_samples=16)
+    import IPython; IPython.embed()
 
-# 从 Bernoulli VAE 采样
-print("\nSampling from Bernoulli VAE")
-sample_vae(bernoulli_vae, device, num_samples=16)
+    # 训练 Gaussian VAE
+    print("\nTraining Gaussian VAE")
+    train_vae(gaussian_vae, train_loader, optimizer_g, device, epochs=10)
 
-# 从 Gaussian VAE 采样
-print("\nSampling from Gaussian VAE")
-sample_vae(gaussian_vae, device, num_samples=16)
+    # 从 Gaussian VAE 采样
+    print("\nSampling from Gaussian VAE")
+    sample_vae(gaussian_vae, device, 'gaussian.png', num_samples=16)
